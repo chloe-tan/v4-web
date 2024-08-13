@@ -330,6 +330,103 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     }
   }, [signerWagmi, publicClientWagmi, sourceToken, requestPayload, evmAddress, debouncedAmount]);
 
+  // probably better to use skip submit endpoint for this
+  const onSubmitCosmos = useCallback(async () => {
+    if (!chainIdStr || !SUPPORTED_COSMOS_CHAINS.includes(chainIdStr)) {
+      throw new Error('chainIdStr not supported');
+    }
+
+    if (!requestPayload?.data) {
+      throw new Error('Missing request payload');
+    }
+
+    const transaction = JSON.parse(requestPayload.data);
+
+    const transferMsg: MsgTransferEncodeObject = {
+      typeUrl: transaction.typeUrl,
+      value: transaction.value,
+    };
+
+    const account = accounts?.[chainIdStr];
+    const signerAddress = account?.bech32Address;
+
+    if (!signerAddress) {
+      throw new Error('Missing signer address');
+    }
+
+    const memo = `${DEFAULT_TRANSACTION_MEMO} | ${signerAddress}`;
+
+    const gasEstimate = await signingClient?.[chainIdStr]?.simulate(
+      signerAddress,
+      [transferMsg],
+      memo
+    );
+
+    const gasPrice = (() => {
+      if (nobleChainId === chainIdStr) {
+        return GasPrice.fromString('0.1uusdc');
+      }
+      if (osmosisChainId === chainIdStr) {
+        return GasPrice.fromString('0.025uosmo');
+      }
+      if (neutronChainId === chainIdStr) {
+        return GasPrice.fromString('0.0053untrn');
+      }
+      return undefined;
+    })();
+
+    if (!gasEstimate || !gasPrice) {
+      throw new Error('Failed to estimate gas');
+    }
+
+    const fee = calculateFee(Math.floor(gasEstimate * GAS_MULTIPLIER), gasPrice);
+    const tx = await signingClient?.[chainIdStr]?.signAndBroadcast(
+      signerAddress,
+      [transferMsg],
+      fee,
+      memo
+    );
+
+    const txHash = tx?.transactionHash;
+
+    if (txHash) {
+      addOrUpdateTransferNotification({
+        txHash,
+        toChainId: selectedDydxChainId,
+        fromChainId: chainIdStr || undefined,
+        toAmount: summary?.usdcSize ?? undefined,
+        triggeredAt: Date.now(),
+        isCctp,
+        type: TransferNotificationTypes.Deposit,
+      });
+      abacusStateManager.clearTransferInputValues();
+      setFromAmount('');
+
+      onDeposit?.({
+        chainId: chainIdStr || undefined,
+        tokenAddress: sourceToken?.address || undefined,
+        tokenSymbol: sourceToken?.symbol || undefined,
+        slippage: slippage || undefined,
+        gasFee: summary?.gasFee || undefined,
+        bridgeFee: summary?.bridgeFee || undefined,
+        exchangeRate: summary?.exchangeRate || undefined,
+        estimatedRouteDuration: summary?.estimatedRouteDuration || undefined,
+        toAmount: summary?.toAmount || undefined,
+        toAmountMin: summary?.toAmountMin || undefined,
+      });
+      dispatch(closeDialog());
+      dispatch(
+        openDialog(
+          DialogTypes.CosmosDeposit({
+            fromChainId: chainIdStr,
+            toAmount: summary?.toAmount ?? undefined,
+            txHash,
+          })
+        )
+      );
+    }
+  }, [requestPayload, signerWagmi, chainIdStr, sourceToken, sourceChain, nobleChainId]);
+
   const onSubmit = useCallback(
     async (e: FormEvent) => {
       track(
@@ -349,99 +446,10 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
       );
       try {
         e.preventDefault();
+        setIsLoading(true);
 
         if (chainIdStr && SUPPORTED_COSMOS_CHAINS.includes(chainIdStr)) {
-          setIsLoading(true);
-
-          if (!requestPayload?.data) {
-            throw new Error('Missing request payload');
-          }
-
-          const transaction = JSON.parse(requestPayload.data);
-
-          const transferMsg: MsgTransferEncodeObject = {
-            typeUrl: transaction.typeUrl,
-            value: transaction.value,
-          };
-
-          const account = accounts?.[chainIdStr];
-          const signerAddress = account?.bech32Address;
-
-          if (!signerAddress) {
-            throw new Error('Missing signer address');
-          }
-
-          const memo = `${DEFAULT_TRANSACTION_MEMO} | ${signerAddress}`;
-
-          const gasEstimate = await signingClient?.[chainIdStr]?.simulate(
-            signerAddress,
-            [transferMsg],
-            memo
-          );
-
-          const gasPrice = (() => {
-            if (nobleChainId === chainIdStr) {
-              return GasPrice.fromString('0.1uusdc');
-            }
-            if (osmosisChainId === chainIdStr) {
-              return GasPrice.fromString('0.025uosmo');
-            }
-            if (neutronChainId === chainIdStr) {
-              return GasPrice.fromString('0.0053untrn');
-            }
-            return undefined;
-          })();
-
-          if (!gasEstimate || !gasPrice) {
-            throw new Error('Failed to estimate gas');
-          }
-
-          const fee = calculateFee(Math.floor(gasEstimate * GAS_MULTIPLIER), gasPrice);
-          const tx = await signingClient?.[chainIdStr]?.signAndBroadcast(
-            signerAddress,
-            [transferMsg],
-            fee,
-            memo
-          );
-
-          const txHash = tx?.transactionHash;
-
-          if (txHash) {
-            addOrUpdateTransferNotification({
-              txHash,
-              toChainId: selectedDydxChainId,
-              fromChainId: chainIdStr || undefined,
-              toAmount: summary?.usdcSize ?? undefined,
-              triggeredAt: Date.now(),
-              isCctp,
-              type: TransferNotificationTypes.Deposit,
-            });
-            abacusStateManager.clearTransferInputValues();
-            setFromAmount('');
-
-            onDeposit?.({
-              chainId: chainIdStr || undefined,
-              tokenAddress: sourceToken?.address || undefined,
-              tokenSymbol: sourceToken?.symbol || undefined,
-              slippage: slippage || undefined,
-              gasFee: summary?.gasFee || undefined,
-              bridgeFee: summary?.bridgeFee || undefined,
-              exchangeRate: summary?.exchangeRate || undefined,
-              estimatedRouteDuration: summary?.estimatedRouteDuration || undefined,
-              toAmount: summary?.toAmount || undefined,
-              toAmountMin: summary?.toAmountMin || undefined,
-            });
-            dispatch(closeDialog());
-            dispatch(
-              openDialog(
-                DialogTypes.CosmosDeposit({
-                  fromChainId: chainIdStr,
-                  toAmount: summary?.toAmount ?? undefined,
-                  txHash,
-                })
-              )
-            );
-          }
+          await onSubmitCosmos();
           return;
         }
 
@@ -455,8 +463,6 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
         if (isCctp && !abacusStateManager.chainTransactions.isNobleClientConnected) {
           throw new Error('Noble RPC endpoint unaccessible');
         }
-
-        setIsLoading(true);
 
         if (!hasAcknowledgedTerms) {
           saveHasAcknowledgedTerms(true);

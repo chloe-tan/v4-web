@@ -87,7 +87,16 @@ export const CosmosDepositDialog = ({ setIsOpen, toAmount, txHash, fromChainId }
     } catch (e) {
       setTxStatus('error');
     }
-  }, [dydxAddress, fromChainId, skip, toAmount, txHash]);
+  }, [
+    toAmount,
+    dydxAddress,
+    txHash,
+    deposit,
+    fromChainId,
+    skip,
+    transferNotifications,
+    addOrUpdateTransferNotification,
+  ]);
 
   const [isExecuted, setIsExecuted] = useState(false);
 
