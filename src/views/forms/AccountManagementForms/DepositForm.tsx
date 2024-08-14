@@ -55,6 +55,7 @@ import { getTransferInputs } from '@/state/inputsSelectors';
 
 import abacusStateManager from '@/lib/abacus';
 import { track } from '@/lib/analytics/analytics';
+import { dd } from '@/lib/analytics/datadog';
 import { MustBigNumber } from '@/lib/numbers';
 import { getNobleChainId, NATIVE_TOKEN_ADDRESS } from '@/lib/squid';
 import { log } from '@/lib/telemetry';
@@ -279,21 +280,21 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
 
   const onSubmit = useCallback(
     async (e: FormEvent) => {
-      track(
-        AnalyticsEvents.TransferDepositFundsClick({
-          chainId: chainIdStr ?? undefined,
-          tokenAddress: sourceToken?.address ?? undefined,
-          tokenSymbol: sourceToken?.symbol ?? undefined,
-          slippage: slippage ?? undefined,
-          gasFee: summary?.gasFee ?? undefined,
-          bridgeFee: summary?.bridgeFee ?? undefined,
-          exchangeRate: summary?.exchangeRate ?? undefined,
-          estimatedRouteDuration: summary?.estimatedRouteDuration ?? undefined,
-          toAmount: summary?.toAmount ?? undefined,
-          toAmountMin: summary?.toAmountMin ?? undefined,
-          depositCTAString,
-        })
-      );
+      const transferDepositContext = {
+        chainId: chainIdStr ?? undefined,
+        tokenAddress: sourceToken?.address ?? undefined,
+        tokenSymbol: sourceToken?.symbol ?? undefined,
+        slippage: slippage ?? undefined,
+        gasFee: summary?.gasFee ?? undefined,
+        bridgeFee: summary?.bridgeFee ?? undefined,
+        exchangeRate: summary?.exchangeRate ?? undefined,
+        estimatedRouteDuration: summary?.estimatedRouteDuration ?? undefined,
+        toAmount: summary?.toAmount ?? undefined,
+        toAmountMin: summary?.toAmountMin ?? undefined,
+        depositCTAString,
+      };
+      track(AnalyticsEvents.TransferDepositFundsClick(transferDepositContext));
+      dd.info('Transfer deposit click', transferDepositContext);
       try {
         e.preventDefault();
 
@@ -338,19 +339,12 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
           });
           abacusStateManager.clearTransferInputValues();
           setFromAmount('');
-
-          onDeposit?.({
-            chainId: chainIdStr || undefined,
-            tokenAddress: sourceToken?.address || undefined,
-            tokenSymbol: sourceToken?.symbol || undefined,
-            slippage: slippage || undefined,
-            gasFee: summary?.gasFee || undefined,
-            bridgeFee: summary?.bridgeFee || undefined,
-            exchangeRate: summary?.exchangeRate || undefined,
-            estimatedRouteDuration: summary?.estimatedRouteDuration || undefined,
-            toAmount: summary?.toAmount || undefined,
-            toAmountMin: summary?.toAmountMin || undefined,
-          });
+          const submittedTransferDepositContext = {
+            ...transferDepositContext,
+            txHash,
+          };
+          onDeposit?.(submittedTransferDepositContext);
+          dd.info('Transfer deposit submitted', submittedTransferDepositContext);
         }
       } catch (err) {
         log('DepositForm/onSubmit', err);
@@ -418,15 +412,17 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     }
 
     if (routeErrors) {
-      track(
-        AnalyticsEvents.RouteError({
-          transferType: TransferType.deposit.name,
-          errorMessage: routeErrorMessage ?? undefined,
-          amount: debouncedAmount,
-          chainId: chainIdStr ?? undefined,
-          assetId: sourceToken?.toString(),
-        })
-      );
+      const routeErrorContext = {
+        transferType: TransferType.deposit.name,
+        errorMessage: routeErrorMessage ?? undefined,
+        amount: debouncedAmount,
+        chainId: chainIdStr ?? undefined,
+        assetAddress: sourceToken?.address,
+        assetSymbol: sourceToken?.symbol,
+        assetName: sourceToken?.name,
+      };
+      track(AnalyticsEvents.RouteError(routeErrorContext));
+      dd.info('Route error received', routeErrorContext);
       return routeErrorMessage
         ? stringGetter({
             key: STRING_KEYS.SOMETHING_WENT_WRONG_WITH_MESSAGE,

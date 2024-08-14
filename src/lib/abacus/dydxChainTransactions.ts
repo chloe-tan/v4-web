@@ -42,6 +42,7 @@ import { type RootStore } from '@/state/_store';
 import { placeOrderTimeout } from '@/state/account';
 import { setInitializationError } from '@/state/app';
 
+import { dd } from '../analytics/datadog';
 import { signComplianceSignature } from '../compliance';
 import { StatefulOrderError, stringifyTransactionError } from '../errors';
 import { bytesToBigInt } from '../numbers';
@@ -410,6 +411,8 @@ class DydxChainTransactions implements AbacusDYDXChainTransactionsProtocol {
       }
 
       ibcMsg.value.token.amount = amount.toString();
+
+      dd.info('sendNobleIBC attempting to submit tx', { ibcMsg, fee, amount });
       const tx = await this.nobleClient.send(
         [ibcMsg],
         undefined,
@@ -417,6 +420,7 @@ class DydxChainTransactions implements AbacusDYDXChainTransactionsProtocol {
       );
 
       const parsedTx = this.parseToPrimitives(tx);
+      dd.info('sendNobleIBC tx submitted', { tx, ibcMsg });
 
       return JSON.stringify(parsedTx);
     } catch (error) {
@@ -456,11 +460,15 @@ class DydxChainTransactions implements AbacusDYDXChainTransactionsProtocol {
         },
       };
 
+      dd.info('withdrawToNobleIBC attempting to submit tx', { ibcMsg });
+
       const tx = await this.compositeClient.send(
         this.localWallet,
         () => Promise.resolve([msg, ibcMsg]),
         false
       );
+
+      dd.info('withdrawToNobleIBC tx submitted', { tx, ibcMsg });
 
       return JSON.stringify({
         txHash: hashFromTx(tx?.hash),
@@ -494,7 +502,11 @@ class DydxChainTransactions implements AbacusDYDXChainTransactionsProtocol {
 
       ibcMsg.value.amount = amount.toString();
 
+      dd.info('cctpWithdraw attempting to submit tx', { ibcMsg, fee, amount });
+
       const tx = await this.nobleClient.send([ibcMsg]);
+
+      dd.info('cctpWithdraw tx submitted', { tx, ibcMsg });
 
       const parsedTx = this.parseToPrimitives(tx);
 
@@ -529,7 +541,9 @@ class DydxChainTransactions implements AbacusDYDXChainTransactionsProtocol {
 
       ibcMsgs[0].value.amount = amount.toString();
 
+      dd.info('cctpMultiMsgWithdraw attempting to submit tx', { ibcMsgs, fee, amount });
       const tx = await this.nobleClient.send(ibcMsgs);
+      dd.info('cctpMultiMsgWithdraw tx submitted', { tx, ibcMsgs });
 
       const parsedTx = this.parseToPrimitives(tx);
 
