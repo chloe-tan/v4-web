@@ -7,12 +7,11 @@ import { useAccount as useAccountGraz, useStargateSigningClient } from 'graz';
 import { type NumberFormatValues } from 'react-number-format';
 import { shallowEqual } from 'react-redux';
 import styled from 'styled-components';
-import { Abi, formatUnits, parseUnits } from 'viem';
+import { Abi, parseUnits } from 'viem';
 
 import erc20 from '@/abi/erc20.json';
 import erc20_usdt from '@/abi/erc20_usdt.json';
 import { TransferInputField, TransferInputTokenResource, TransferType } from '@/constants/abacus';
-import { AMOUNT_RESERVED_FOR_GAS_USDC } from '@/constants/account';
 import { AlertType } from '@/constants/alerts';
 import {
   AnalyticsEventPayloads,
@@ -116,7 +115,7 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     walletType,
   } = useAccounts();
   const { getAccountBalance } = useDydxClient();
-  const { deposit } = useSubaccount();
+  const { depositCurrentBalance } = useSubaccount();
 
   const { addOrUpdateTransferNotification } = useLocalNotifications();
 
@@ -155,7 +154,7 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
   const [slippage, setSlippage] = useState(isCctp ? 0 : 0.01); // 1% slippage
   const debouncedAmount = useDebounce<string>(fromAmount, 500);
 
-  const { usdcLabel, usdcDenom, usdcDecimals } = useTokenConfigs();
+  const { usdcLabel, usdcDenom } = useTokenConfigs();
 
   const { data: accounts } = useAccountGraz({
     chainId: SUPPORTED_COSMOS_CHAINS,
@@ -354,16 +353,10 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
           throw new Error('Balance update timed out');
         }
       }
-
-      const balanceAmount = formatUnits(BigInt(currentBalance), usdcDecimals);
-      const depositAmount = parseFloat(balanceAmount) - AMOUNT_RESERVED_FOR_GAS_USDC;
-
-      if (depositAmount > 0) {
-        setDepositStep(DepositSteps.KEPLR_APPROVAL);
-        await deposit(depositAmount);
-      }
+      setDepositStep(DepositSteps.KEPLR_APPROVAL);
+      await depositCurrentBalance();
     },
-    [usdcDecimals, getAccountBalance, dydxAddress, usdcDenom, deposit]
+    [getAccountBalance, dydxAddress, usdcDenom, depositCurrentBalance]
   );
 
   // probably better to use skip submit endpoint for this
@@ -435,6 +428,17 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     const txHash = tx?.transactionHash;
 
     if (txHash) {
+      const notification = {
+        txHash,
+        toChainId: selectedDydxChainId,
+        fromChainId: chainIdStr || undefined,
+        toAmount: summary?.usdcSize || undefined,
+        triggeredAt: Date.now(),
+        requestId: requestPayload.requestId ?? undefined,
+        type: TransferNotificationTypes.Deposit,
+      };
+      addOrUpdateTransferNotification(notification);
+
       onDeposit?.({
         chainId: chainIdStr || undefined,
         tokenAddress: sourceToken?.address || undefined,
@@ -454,6 +458,11 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
       setDepositStep(DepositSteps.Initial);
 
       await waitForBalanceAndDeposit(initialBalance.amount);
+
+      addOrUpdateTransferNotification({
+        ...notification,
+        isSubaccountDepositCompleted: true,
+      });
     }
   }, [
     requestPayload,

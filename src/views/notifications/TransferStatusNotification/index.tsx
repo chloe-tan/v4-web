@@ -1,16 +1,18 @@
 import { MouseEvent, useCallback, useState } from 'react';
 
+import { log } from 'console';
 import styled, { css } from 'styled-components';
 import tw from 'twin.macro';
 
 import { AlertType } from '@/constants/alerts';
 import { ButtonAction, ButtonSize, ButtonType } from '@/constants/buttons';
-import { DialogTypes } from '@/constants/dialogs';
 import { STRING_KEYS } from '@/constants/localization';
 import { TransferNotifcation, TransferNotificationTypes } from '@/constants/notifications';
 
 import { useInterval } from '@/hooks/useInterval';
+import { useLocalNotifications } from '@/hooks/useLocalNotifications';
 import { useStringGetter } from '@/hooks/useStringGetter';
+import { useSubaccount } from '@/hooks/useSubaccount';
 
 import { AlertMessage } from '@/components/AlertMessage';
 import { Button } from '@/components/Button';
@@ -24,8 +26,7 @@ import { Output, OutputType } from '@/components/Output';
 import { WithReceipt } from '@/components/WithReceipt';
 
 import { getSelectedDydxChainId } from '@/state/appSelectors';
-import { useAppDispatch, useAppSelector } from '@/state/appTypes';
-import { openDialog } from '@/state/dialogs';
+import { useAppSelector } from '@/state/appTypes';
 
 import { SUPPORTED_COSMOS_CHAINS } from '@/lib/graz';
 import { formatSeconds } from '@/lib/timeUtils';
@@ -50,11 +51,11 @@ export const TransferStatusNotification = ({
   const stringGetter = useStringGetter();
   const [open, setOpen] = useState<boolean>(false);
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
-  const dispatch = useAppDispatch();
+  const { depositCurrentBalance } = useSubaccount();
+  const { addOrUpdateTransferNotification } = useLocalNotifications();
   const selectedDydxChainId = useAppSelector(getSelectedDydxChainId);
 
-  const { status, toAmount, isExchange, fromChainId, txHash, isSubaccountDepositCompleted } =
-    transfer;
+  const { status, toAmount, isExchange, fromChainId, isSubaccountDepositCompleted } = transfer;
 
   // @ts-ignore status.errors is not in the type definition but can be returned
   const error = status?.errors?.length ? status?.errors[0] : status?.error;
@@ -116,6 +117,18 @@ export const TransferStatusNotification = ({
     },
   ];
 
+  const subaccountDeposit = useCallback(async () => {
+    try {
+      await depositCurrentBalance();
+      addOrUpdateTransferNotification({
+        ...transfer,
+        isSubaccountDepositCompleted: true,
+      });
+    } catch (e) {
+      log('TransferStatusNotification/subaccountDeposit', e);
+    }
+  }, [addOrUpdateTransferNotification, depositCurrentBalance, transfer]);
+
   const content = (
     <div tw="flexColumn gap-0.5">
       {isCosmosDeposit ? (
@@ -126,17 +139,7 @@ export const TransferStatusNotification = ({
               action={ButtonAction.Primary}
               type={ButtonType.Button}
               size={ButtonSize.Small}
-              onClick={() => {
-                dispatch(
-                  openDialog(
-                    DialogTypes.CosmosDeposit({
-                      fromChainId,
-                      toAmount,
-                      txHash,
-                    })
-                  )
-                );
-              }}
+              onClick={subaccountDeposit}
             >
               {/* TODO: Need to add localization */}
               Confirm Deposit

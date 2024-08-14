@@ -7,6 +7,7 @@ import { shallowEqual } from 'react-redux';
 import { erc20Abi, formatUnits } from 'viem';
 import { useBalance, useReadContracts } from 'wagmi';
 
+import { COSMOS_GAS_RESERVE } from '@/constants/numbers';
 import { EvmAddress } from '@/constants/wallets';
 
 import { getBalances, getStakingBalances } from '@/state/accountSelectors';
@@ -180,7 +181,9 @@ export const useAccountBalance = ({
     : evmTokenBalance?.result !== undefined && evmTokenDecimals?.result !== undefined
       ? formatUnits(evmTokenBalance?.result, evmTokenDecimals?.result)
       : undefined;
-  const balance = isCosmosChain ? cosmosQuery.data : evmBalance;
+
+  const cosmosBalance = parseFloat(cosmosQuery.data ?? '0') - COSMOS_GAS_RESERVE;
+  const balance = isCosmosChain ? (cosmosBalance > 0 ? cosmosBalance : 0) : evmBalance;
 
   const nativeTokenCoinBalance = balances?.[chainTokenDenom];
   const nativeTokenBalance = MustBigNumber(nativeTokenCoinBalance?.amount);

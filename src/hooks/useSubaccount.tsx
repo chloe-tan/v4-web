@@ -12,7 +12,7 @@ import {
 } from '@dydxprotocol/v4-client-js';
 import Long from 'long';
 import { shallowEqual } from 'react-redux';
-import { parseUnits } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 
 import type {
   AccountBalance,
@@ -335,6 +335,22 @@ const useSubaccountContext = ({ localDydxWallet }: { localDydxWallet?: LocalWall
     },
     [subaccountClient, depositToSubaccount]
   );
+
+  const depositCurrentBalance = useCallback(async () => {
+    const currentBalance = (
+      await compositeClient?.validatorClient.get.getAccountBalance(dydxAddress as string, usdcDenom)
+    )?.amount;
+
+    if (!currentBalance) throw new Error('Failed to get current balance');
+
+    const balanceAmount = formatUnits(BigInt(currentBalance), usdcDecimals);
+
+    const depositAmount = parseFloat(balanceAmount) - AMOUNT_RESERVED_FOR_GAS_USDC;
+
+    if (depositAmount > 0) {
+      await deposit(depositAmount);
+    }
+  }, [usdcDecimals, compositeClient, dydxAddress, usdcDenom, deposit]);
 
   const withdraw = useCallback(
     async (amount: number) => {
@@ -834,6 +850,7 @@ const useSubaccountContext = ({ localDydxWallet }: { localDydxWallet?: LocalWall
     transfer,
     sendSquidWithdraw,
     adjustIsolatedMarginOfPosition,
+    depositCurrentBalance,
 
     // Trading Methods
     placeOrder,
