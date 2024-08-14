@@ -85,6 +85,7 @@ export const CosmosDepositDialog = ({ setIsOpen, toAmount, txHash, fromChainId }
         }
       }
     } catch (e) {
+      console.error(e);
       setTxStatus('error');
     }
   }, [
@@ -101,11 +102,12 @@ export const CosmosDepositDialog = ({ setIsOpen, toAmount, txHash, fromChainId }
   const [isExecuted, setIsExecuted] = useState(false);
 
   useEffect(() => {
-    if (!isExecuted) {
+    const notification = transferNotifications.find((n) => n.txHash === txHash);
+    if (!isExecuted && notification) {
       depositToSubaccount();
+      setIsExecuted(true);
     }
-    setIsExecuted(true);
-  }, [depositToSubaccount, isExecuted]);
+  }, [depositToSubaccount, isExecuted, transferNotifications, txHash]);
 
   const onRetry = () => {
     setTxStatus('pending');

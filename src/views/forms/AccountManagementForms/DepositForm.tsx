@@ -7,11 +7,12 @@ import { useAccount as useAccountGraz, useStargateSigningClient } from 'graz';
 import { type NumberFormatValues } from 'react-number-format';
 import { shallowEqual } from 'react-redux';
 import styled from 'styled-components';
-import { Abi, parseUnits } from 'viem';
+import { Abi, formatUnits, parseUnits } from 'viem';
 
 import erc20 from '@/abi/erc20.json';
 import erc20_usdt from '@/abi/erc20_usdt.json';
 import { TransferInputField, TransferInputTokenResource, TransferType } from '@/constants/abacus';
+import { AMOUNT_RESERVED_FOR_GAS_USDC } from '@/constants/account';
 import { AlertType } from '@/constants/alerts';
 import {
   AnalyticsEventPayloads,
@@ -37,8 +38,10 @@ import { WalletType, type EvmAddress } from '@/constants/wallets';
 import { CHAIN_DEFAULT_TOKEN_ADDRESS, useAccountBalance } from '@/hooks/useAccountBalance';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useDydxClient } from '@/hooks/useDydxClient';
 import { useLocalNotifications } from '@/hooks/useLocalNotifications';
 import { useStringGetter } from '@/hooks/useStringGetter';
+import { useSubaccount } from '@/hooks/useSubaccount';
 import { useTokenConfigs } from '@/hooks/useTokenConfigs';
 
 import { formMixins } from '@/styles/formMixins';
@@ -58,7 +61,7 @@ import { WithTooltip } from '@/components/WithTooltip';
 import { getOnboardingGuards } from '@/state/accountSelectors';
 import { getSelectedDydxChainId } from '@/state/appSelectors';
 import { useAppDispatch, useAppSelector } from '@/state/appTypes';
-import { closeDialog, forceOpenDialog, openDialog } from '@/state/dialogs';
+import { forceOpenDialog } from '@/state/dialogs';
 import { getTransferInputs } from '@/state/inputsSelectors';
 
 import abacusStateManager from '@/lib/abacus';
@@ -72,6 +75,7 @@ import {
 import { MustBigNumber } from '@/lib/numbers';
 import { NATIVE_TOKEN_ADDRESS } from '@/lib/squid';
 import { log } from '@/lib/telemetry';
+import { sleep } from '@/lib/timeUtils';
 import { parseWalletError } from '@/lib/wallet';
 
 import { CoinbaseDeposit } from '../CoinbaseDeposit';
@@ -88,6 +92,8 @@ enum DepositSteps {
   Initial = 'initial',
   Approval = 'approval',
   Confirm = 'confirm',
+
+  KEPLR_APPROVAL = 'keplr_approval',
 }
 
 export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
@@ -109,6 +115,8 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     saveHasAcknowledgedTerms,
     walletType,
   } = useAccounts();
+  const { getAccountBalance } = useDydxClient();
+  const { deposit } = useSubaccount();
 
   const { addOrUpdateTransferNotification } = useLocalNotifications();
 
@@ -147,7 +155,7 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
   const [slippage, setSlippage] = useState(isCctp ? 0 : 0.01); // 1% slippage
   const debouncedAmount = useDebounce<string>(fromAmount, 500);
 
-  const { usdcLabel } = useTokenConfigs();
+  const { usdcLabel, usdcDenom, usdcDecimals } = useTokenConfigs();
 
   const { data: accounts } = useAccountGraz({
     chainId: SUPPORTED_COSMOS_CHAINS,
@@ -330,6 +338,34 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     }
   }, [signerWagmi, publicClientWagmi, sourceToken, requestPayload, evmAddress, debouncedAmount]);
 
+  const waitForBalanceAndDeposit = useCallback(
+    async (initialBalance: string) => {
+      let currentBalance = initialBalance;
+      let iterCount = 0;
+      while (currentBalance === initialBalance) {
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(5000);
+        // we are polling so no need to parallelize the awaits
+        currentBalance =
+          // eslint-disable-next-line no-await-in-loop
+          (await getAccountBalance(dydxAddress as string, usdcDenom))?.amount || initialBalance;
+        iterCount += 1;
+        if (iterCount > 20) {
+          throw new Error('Balance update timed out');
+        }
+      }
+
+      const balanceAmount = formatUnits(BigInt(currentBalance), usdcDecimals);
+      const depositAmount = parseFloat(balanceAmount) - AMOUNT_RESERVED_FOR_GAS_USDC;
+
+      if (depositAmount > 0) {
+        setDepositStep(DepositSteps.KEPLR_APPROVAL);
+        await deposit(depositAmount);
+      }
+    },
+    [usdcDecimals, getAccountBalance, dydxAddress, usdcDenom, deposit]
+  );
+
   // probably better to use skip submit endpoint for this
   const onSubmitCosmos = useCallback(async () => {
     if (!chainIdStr || !SUPPORTED_COSMOS_CHAINS.includes(chainIdStr)) {
@@ -380,6 +416,15 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     }
 
     const fee = calculateFee(Math.floor(gasEstimate * GAS_MULTIPLIER), gasPrice);
+
+    const initialBalance = await getAccountBalance(dydxAddress as string, usdcDenom);
+
+    if (!initialBalance) {
+      throw new Error('Failed to get wallet balance');
+    }
+
+    setDepositStep(DepositSteps.KEPLR_APPROVAL);
+
     const tx = await signingClient?.[chainIdStr]?.signAndBroadcast(
       signerAddress,
       [transferMsg],
@@ -390,18 +435,6 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     const txHash = tx?.transactionHash;
 
     if (txHash) {
-      addOrUpdateTransferNotification({
-        txHash,
-        toChainId: selectedDydxChainId,
-        fromChainId: chainIdStr || undefined,
-        toAmount: summary?.usdcSize ?? undefined,
-        triggeredAt: Date.now(),
-        isCctp,
-        type: TransferNotificationTypes.Deposit,
-      });
-      abacusStateManager.clearTransferInputValues();
-      setFromAmount('');
-
       onDeposit?.({
         chainId: chainIdStr || undefined,
         tokenAddress: sourceToken?.address || undefined,
@@ -414,18 +447,23 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
         toAmount: summary?.toAmount || undefined,
         toAmountMin: summary?.toAmountMin || undefined,
       });
-      dispatch(closeDialog());
-      dispatch(
-        openDialog(
-          DialogTypes.CosmosDeposit({
-            fromChainId: chainIdStr,
-            toAmount: summary?.toAmount ?? undefined,
-            txHash,
-          })
-        )
-      );
+
+      abacusStateManager.clearTransferInputValues();
+      setFromAmount('');
+
+      setDepositStep(DepositSteps.Initial);
+
+      await waitForBalanceAndDeposit(initialBalance.amount);
     }
-  }, [requestPayload, signerWagmi, chainIdStr, sourceToken, sourceChain, nobleChainId]);
+  }, [
+    requestPayload,
+    signerWagmi,
+    chainIdStr,
+    sourceToken,
+    sourceChain,
+    nobleChainId,
+    waitForBalanceAndDeposit,
+  ]);
 
   const onSubmit = useCallback(
     async (e: FormEvent) => {
@@ -626,6 +664,9 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     }
     if (depositStep === DepositSteps.Confirm) {
       return stringGetter({ key: STRING_KEYS.PENDING_DEPOSIT_CONFIRMATION });
+    }
+    if (depositStep === DepositSteps.KEPLR_APPROVAL) {
+      return 'Pending approval in wallet';
     }
     return hasAcknowledgedTerms
       ? stringGetter({ key: STRING_KEYS.DEPOSIT_FUNDS })
