@@ -1,6 +1,6 @@
 import { OrderSide } from '@dydxprotocol/v4-client-js';
 
-import { Candle, TradingViewBar, TradingViewSymbol } from '@/constants/candles';
+import { Candle, TradingViewChartBar, TradingViewSymbol } from '@/constants/candles';
 import { THEME_NAMES } from '@/constants/styles/colors';
 import type { ChartLineType } from '@/constants/tvchart';
 
@@ -8,33 +8,103 @@ import { Themes } from '@/styles/themes';
 
 import { AppTheme, type AppColorMode } from '@/state/configs';
 
-export const mapCandle = ({
-  startedAt,
-  open,
-  close,
-  high,
-  low,
-  baseTokenVolume,
+const getOhlcValues = ({
+  orderbookCandlesToggleOn,
   trades,
-  orderbookMidPriceOpen,
-  orderbookMidPriceClose,
-}: Candle): TradingViewBar => {
-  const hasNoTrades = trades === 0;
-  // Empty (0 trade) candles in markets will show O(pen) H(igh) L(ow) C(lose) data via mid-price.
-  // Otherwise, candles display OHLC data from historical trades.
-  const useOhlc = hasNoTrades && orderbookMidPriceOpen && orderbookMidPriceClose;
+  tradeOpen,
+  tradeClose,
+  tradeLow,
+  tradeHigh,
+  orderbookOpen,
+  orderbookClose,
+}: {
+  orderbookCandlesToggleOn: boolean;
+  trades: number;
+  tradeOpen: number;
+  tradeClose: number;
+  tradeLow: number;
+  tradeHigh: number;
+  orderbookOpen?: number;
+  orderbookClose?: number;
+}) => {
+  const useOrderbookCandles =
+    orderbookCandlesToggleOn &&
+    trades === 0 &&
+    orderbookOpen !== undefined &&
+    orderbookClose !== undefined;
 
   return {
-    time: new Date(startedAt).getTime(),
-    low: useOhlc
-      ? Math.min(parseFloat(orderbookMidPriceOpen), parseFloat(orderbookMidPriceClose))
-      : parseFloat(low),
-    high: useOhlc
-      ? Math.max(parseFloat(orderbookMidPriceOpen), parseFloat(orderbookMidPriceClose))
-      : parseFloat(high),
-    open: useOhlc ? parseFloat(orderbookMidPriceOpen) : parseFloat(open),
-    close: useOhlc ? parseFloat(orderbookMidPriceClose) : parseFloat(close),
-    volume: Math.ceil(Number(baseTokenVolume)),
+    low: useOrderbookCandles ? Math.min(orderbookOpen, orderbookClose) : tradeLow,
+    high: useOrderbookCandles ? Math.max(orderbookOpen, orderbookClose) : tradeHigh,
+    open: useOrderbookCandles ? orderbookOpen : tradeOpen,
+    close: useOrderbookCandles ? orderbookClose : tradeClose,
+  };
+};
+
+export const mapCandle =
+  (orderbookCandlesToggleOn: boolean) =>
+  ({
+    startedAt,
+    open,
+    close,
+    high,
+    low,
+    baseTokenVolume,
+    trades,
+    orderbookMidPriceOpen,
+    orderbookMidPriceClose,
+  }: Candle): TradingViewChartBar => {
+    const tradeOpen = parseFloat(open);
+    const tradeClose = parseFloat(close);
+    const tradeLow = parseFloat(low);
+    const tradeHigh = parseFloat(high);
+    const orderbookOpen = orderbookMidPriceOpen ? parseFloat(orderbookMidPriceOpen) : undefined;
+    const orderbookClose = orderbookMidPriceClose ? parseFloat(orderbookMidPriceClose) : undefined;
+
+    return {
+      ...getOhlcValues({
+        orderbookCandlesToggleOn,
+        trades,
+        tradeOpen,
+        tradeClose,
+        tradeLow,
+        tradeHigh,
+        orderbookOpen,
+        orderbookClose,
+      }),
+      time: new Date(startedAt).getTime(),
+      volume: Math.ceil(Number(baseTokenVolume)),
+      tradeOpen,
+      tradeClose,
+      orderbookOpen,
+      orderbookClose,
+      tradeLow,
+      tradeHigh,
+      trades,
+    };
+  };
+
+const mapTradingViewChartBar = ({
+  orderbookCandlesToggleOn,
+  bar,
+}: {
+  orderbookCandlesToggleOn: boolean;
+  bar: TradingViewChartBar;
+}): TradingViewChartBar => {
+  const { trades, orderbookOpen, orderbookClose, tradeOpen, tradeClose, tradeLow, tradeHigh } = bar;
+
+  return {
+    ...bar,
+    ...getOhlcValues({
+      orderbookCandlesToggleOn,
+      trades,
+      tradeOpen,
+      tradeClose,
+      tradeLow,
+      tradeHigh,
+      orderbookOpen,
+      orderbookClose,
+    }),
   };
 };
 
@@ -51,17 +121,21 @@ export const getHistorySlice = ({
   fromMs,
   toMs,
   firstDataRequest,
+  orderbookCandlesToggleOn,
 }: {
-  bars?: TradingViewBar[];
+  bars?: TradingViewChartBar[];
   fromMs: number;
   toMs: number;
   firstDataRequest: boolean;
-}): TradingViewBar[] => {
+  orderbookCandlesToggleOn: boolean;
+}): TradingViewChartBar[] => {
   if (!bars || (!firstDataRequest && bars.length > 0 && toMs < bars[0].time)) {
     return [];
   }
 
-  return bars.filter(({ time }) => time >= fromMs);
+  return bars
+    .map((bar) => mapTradingViewChartBar({ orderbookCandlesToggleOn, bar }))
+    .filter(({ time }) => time >= fromMs);
 };
 
 export const getChartLineColors = ({
@@ -121,6 +195,7 @@ export const getWidgetOverrides = ({
       'scalesProperties.textColor': theme.textPrimary,
       'scalesProperties.backgroundColor': theme.layer2,
       'scalesProperties.lineColor': theme.layer3,
+      'scalesProperties.fontSize': 12,
     },
     studies_overrides: {
       'volume.volume.color.0': theme.negative,
@@ -143,6 +218,7 @@ export const getWidgetOptions = () => {
     container: 'tv-price-chart',
     library_path: '/tradingview/', // relative to public folder
     custom_css_url: '/tradingview/custom-styles.css',
+    custom_font_family: "'Satoshi', system-ui, -apple-system, Helvetica, Arial, sans-serif",
     autosize: true,
     disabled_features: [
       'header_symbol_search',

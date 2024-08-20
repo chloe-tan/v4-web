@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
 
 import BigNumber from 'bignumber.js';
 import isEmpty from 'lodash/isEmpty';
@@ -10,6 +10,7 @@ import {
 import { shallowEqual } from 'react-redux';
 
 import { DEFAULT_RESOLUTION } from '@/constants/candles';
+import { TOGGLE_ACTIVE_CLASS_NAME } from '@/constants/charts';
 import { LocalStorageKey } from '@/constants/localStorage';
 import { STRING_KEYS, SUPPORTED_LOCALE_BASE_TAGS } from '@/constants/localization';
 import { tooltipStrings } from '@/constants/tooltips';
@@ -26,8 +27,8 @@ import { getDydxDatafeed } from '@/lib/tradingView/dydxfeed';
 import { getSavedResolution, getWidgetOptions, getWidgetOverrides } from '@/lib/tradingView/utils';
 
 import { useDydxClient } from '../useDydxClient';
-import { useEnvFeatures } from '../useEnvFeatures';
 import { useLocalStorage } from '../useLocalStorage';
+import { useLocaleSeparators } from '../useLocaleSeparators';
 import { useAllStatsigGateValues } from '../useStatsig';
 import { useStringGetter } from '../useStringGetter';
 import { useURLConfigs } from '../useURLConfigs';
@@ -38,18 +39,33 @@ import { useURLConfigs } from '../useURLConfigs';
 export const useTradingView = ({
   tvWidgetRef,
   orderLineToggleRef,
-  ohlcToggleRef,
+  orderLinesToggleOn,
+  setOrderLinesToggleOn,
+  orderbookCandlesToggleRef,
+  orderbookCandlesToggleOn,
+  setOrderbookCandlesToggleOn,
+  buySellMarksToggleRef,
+  buySellMarksToggleOn,
+  setBuySellMarksToggleOn,
   setIsChartReady,
 }: {
   tvWidgetRef: React.MutableRefObject<TvWidget | null>;
   orderLineToggleRef: React.MutableRefObject<HTMLElement | null>;
-  ohlcToggleRef: React.MutableRefObject<HTMLElement | null>;
+  orderLinesToggleOn: boolean;
+  setOrderLinesToggleOn: Dispatch<SetStateAction<boolean>>;
+  orderbookCandlesToggleRef: React.MutableRefObject<HTMLElement | null>;
+  orderbookCandlesToggleOn: boolean;
+  setOrderbookCandlesToggleOn: Dispatch<SetStateAction<boolean>>;
+  buySellMarksToggleRef: React.MutableRefObject<HTMLElement | null>;
+  buySellMarksToggleOn: boolean;
+  setBuySellMarksToggleOn: Dispatch<SetStateAction<boolean>>;
   setIsChartReady: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
   const stringGetter = useStringGetter();
   const urlConfigs = useURLConfigs();
   const featureFlags = useAllStatsigGateValues();
-  const { isOhlcEnabled } = useEnvFeatures();
+
+  const { group, decimal } = useLocaleSeparators();
 
   const appTheme = useAppSelector(getAppTheme);
   const appColorMode = useAppSelector(getAppColorMode);
@@ -73,6 +89,33 @@ export const useTradingView = ({
   const hasMarkets = marketIds.length > 0;
   const hasPriceScaleInfo = initialPriceScale !== null || hasMarkets;
 
+  const initializeToggle = useCallback(
+    ({
+      toggleRef,
+      tvWidget,
+      isOn,
+      setToggleOn,
+      label,
+      tooltip,
+    }: {
+      toggleRef: React.MutableRefObject<HTMLElement | null>;
+      tvWidget: TvWidget;
+      isOn: boolean;
+      setToggleOn: Dispatch<SetStateAction<boolean>>;
+      label: string;
+      tooltip: string;
+    }) => {
+      toggleRef.current = tvWidget.createButton();
+      toggleRef.current.innerHTML = `<span>${label}</span> <div class="toggle"></div>`;
+      toggleRef.current.setAttribute('title', tooltip);
+      if (isOn) {
+        toggleRef.current.classList.add(TOGGLE_ACTIVE_CLASS_NAME);
+      }
+      toggleRef.current.onclick = () => setToggleOn((prev) => !prev);
+    },
+    []
+  );
+
   useEffect(() => {
     // we only need tick size from current market for the price scale settings
     // if markets haven't been loaded via abacus, get the current market info from indexer
@@ -94,42 +137,73 @@ export const useTradingView = ({
       const options = {
         ...widgetOptions,
         ...widgetOverrides,
-        datafeed: getDydxDatafeed(store, getCandlesForDatafeed, initialPriceScale),
+        datafeed: getDydxDatafeed(
+          store,
+          getCandlesForDatafeed,
+          initialPriceScale,
+          orderbookCandlesToggleOn,
+          { decimal, group },
+          selectedLocale,
+          stringGetter
+        ),
         interval: (savedResolution ?? DEFAULT_RESOLUTION) as ResolutionString,
         locale: SUPPORTED_LOCALE_BASE_TAGS[selectedLocale] as LanguageCode,
         symbol: marketId,
         saved_data: !isEmpty(savedTvChartConfig) ? savedTvChartConfig : undefined,
+        auto_save_delay: 1,
       };
 
       const tvChartWidget = new Widget(options);
       tvWidgetRef.current = tvChartWidget;
 
-      tvWidgetRef.current.onChartReady(() => {
+      tvWidgetRef.current?.onChartReady(() => {
         tvWidgetRef.current?.headerReady().then(() => {
           if (tvWidgetRef.current) {
-            if (orderLineToggleRef) {
-              orderLineToggleRef.current = tvWidgetRef.current.createButton();
-              orderLineToggleRef.current.innerHTML = `<span>${stringGetter({
+            // Order Lines
+            initializeToggle({
+              toggleRef: orderLineToggleRef,
+              tvWidget: tvWidgetRef.current,
+              isOn: orderLinesToggleOn,
+              setToggleOn: setOrderLinesToggleOn,
+              label: stringGetter({
                 key: STRING_KEYS.ORDER_LINES,
-              })}</span> <div class="displayOrdersButton-toggle"></div>`;
-              orderLineToggleRef.current.setAttribute(
-                'title',
-                stringGetter({ key: STRING_KEYS.ORDER_LINES_TOOLTIP })
-              );
-            }
-            if (isOhlcEnabled && ohlcToggleRef) {
-              const getOhlcTooltipString = tooltipStrings.ohlc;
-              const { title: ohlcTitle, body: ohlcBody } = getOhlcTooltipString({
-                stringGetter,
-                stringParams: {},
-                urlConfigs,
-                featureFlags,
-              });
+              }),
+              tooltip: stringGetter({
+                key: STRING_KEYS.ORDER_LINES_TOOLTIP,
+              }),
+            });
 
-              ohlcToggleRef.current = tvWidgetRef.current.createButton();
-              ohlcToggleRef.current.innerHTML = `<span>${`${ohlcTitle}*`}</span> <div class="ohlcButton-toggle"></div>`;
-              ohlcToggleRef.current.setAttribute('title', ohlcBody as string);
-            }
+            // Orderbook Candles (OHLC)
+            const getOhlcTooltipString = tooltipStrings.ohlc;
+            const { title: ohlcTitle, body: ohlcBody } = getOhlcTooltipString({
+              stringGetter,
+              stringParams: {},
+              urlConfigs,
+              featureFlags,
+            });
+
+            initializeToggle({
+              toggleRef: orderbookCandlesToggleRef,
+              tvWidget: tvWidgetRef.current,
+              isOn: orderbookCandlesToggleOn,
+              setToggleOn: setOrderbookCandlesToggleOn,
+              label: `${ohlcTitle}*`,
+              tooltip: ohlcBody as string,
+            });
+
+            // Buy/Sell Marks
+            initializeToggle({
+              toggleRef: buySellMarksToggleRef,
+              tvWidget: tvWidgetRef.current,
+              isOn: buySellMarksToggleOn,
+              setToggleOn: setBuySellMarksToggleOn,
+              label: stringGetter({
+                key: STRING_KEYS.BUYS_SELLS_TOGGLE,
+              }),
+              tooltip: stringGetter({
+                key: STRING_KEYS.BUYS_SELLS_TOGGLE_TOOLTIP,
+              }),
+            });
           }
         });
 
@@ -144,13 +218,28 @@ export const useTradingView = ({
     return () => {
       orderLineToggleRef.current?.remove();
       orderLineToggleRef.current = null;
-      ohlcToggleRef.current?.remove();
-      ohlcToggleRef.current = null;
+      orderbookCandlesToggleRef.current?.remove();
+      orderbookCandlesToggleRef.current = null;
+      buySellMarksToggleRef.current?.remove();
+      buySellMarksToggleRef.current = null;
       tvWidgetRef.current?.remove();
       tvWidgetRef.current = null;
       setIsChartReady(false);
     };
-  }, [selectedLocale, selectedNetwork, !!marketId, hasPriceScaleInfo]);
+  }, [
+    selectedLocale,
+    selectedNetwork,
+    !!marketId,
+    hasPriceScaleInfo,
+    orderLineToggleRef,
+    orderbookCandlesToggleRef,
+    buySellMarksToggleRef,
+    setBuySellMarksToggleOn,
+    setOrderLinesToggleOn,
+    setOrderbookCandlesToggleOn,
+    orderbookCandlesToggleOn,
+    tvWidgetRef,
+  ]);
 
   return { savedResolution };
 };

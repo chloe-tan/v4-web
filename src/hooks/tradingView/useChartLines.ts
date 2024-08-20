@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { shallowEqual } from 'react-redux';
 
 import { ORDER_SIDES, SubaccountOrder } from '@/constants/abacus';
+import { TOGGLE_ACTIVE_CLASS_NAME } from '@/constants/charts';
 import { STRING_KEYS } from '@/constants/localization';
 import { ORDER_TYPE_STRINGS, type OrderType } from '@/constants/trade';
 import type { ChartLine, PositionLineType, TvWidget } from '@/constants/tvchart';
@@ -22,6 +23,8 @@ import { getChartLineColors } from '@/lib/tradingView/utils';
 
 import { useStringGetter } from '../useStringGetter';
 
+const CHART_LINE_FONT = 'bold 10px Satoshi';
+
 /**
  * @description Hook to handle drawing chart lines
  */
@@ -30,13 +33,13 @@ export const useChartLines = ({
   tvWidget,
   orderLineToggle,
   isChartReady,
+  orderLinesToggleOn,
 }: {
   tvWidget: TvWidget | null;
   orderLineToggle: HTMLElement | null;
   isChartReady: boolean;
+  orderLinesToggleOn: boolean;
 }) => {
-  const [showOrderLines, setShowOrderLines] = useState(true);
-
   const [initialWidget, setInitialWidget] = useState<TvWidget | null>(null);
   const [lastMarket, setLastMarket] = useState<string | undefined>(undefined);
 
@@ -71,7 +74,7 @@ export const useChartLines = ({
     [tvWidget]
   );
 
-  const setLineColors = useCallback(
+  const setLineColorsAndFont = useCallback(
     ({ chartLine }: { chartLine: ChartLine }) => {
       const { line, chartLineType } = chartLine;
       const { maybeQuantityColor, borderColor, backgroundColor, textColor, textButtonColor } =
@@ -86,7 +89,9 @@ export const useChartLines = ({
         .setBodyBackgroundColor(backgroundColor)
         .setBodyBorderColor(borderColor)
         .setBodyTextColor(textColor)
-        .setQuantityTextColor(textButtonColor);
+        .setQuantityTextColor(textButtonColor)
+        .setBodyFont(CHART_LINE_FONT)
+        .setQuantityFont(CHART_LINE_FONT);
 
       if (maybeQuantityColor != null) {
         line.setLineColor(maybeQuantityColor).setQuantityBackgroundColor(maybeQuantityColor);
@@ -139,12 +144,12 @@ export const useChartLines = ({
 
         if (positionLine) {
           const chartLine: ChartLine = { line: positionLine, chartLineType };
-          setLineColors({ chartLine });
+          setLineColorsAndFont({ chartLine });
           chartLinesRef.current[key] = chartLine;
         }
       }
     },
-    [setLineColors, tvWidget]
+    [setLineColorsAndFont, tvWidget]
   );
 
   const updatePositionLines = useCallback(() => {
@@ -229,14 +234,14 @@ export const useChartLines = ({
                 line: orderLine,
                 chartLineType: ORDER_SIDES[side.name],
               };
-              setLineColors({ chartLine });
+              setLineColorsAndFont({ chartLine });
               chartLinesRef.current[key] = chartLine;
             }
           }
         }
       }
     );
-  }, [setLineColors, stringGetter, currentMarketOrders, tvWidget]);
+  }, [setLineColorsAndFont, stringGetter, currentMarketOrders, tvWidget]);
 
   const clearChartLines = useCallback(() => {
     Object.values(chartLinesRef.current).forEach(({ line }) => {
@@ -246,33 +251,30 @@ export const useChartLines = ({
   }, []);
 
   const drawChartLines = useCallback(() => {
-    if (showOrderLines) {
+    if (orderLinesToggleOn) {
       updateOrderLines();
       updatePositionLines();
     } else {
       clearChartLines();
     }
-  }, [updatePositionLines, updateOrderLines, clearChartLines, showOrderLines]);
+  }, [updatePositionLines, updateOrderLines, clearChartLines, orderLinesToggleOn]);
 
   // Effects
-
-  useEffect(() => {
-    // Initialize onClick for order line toggle
-    if (isChartReady && orderLineToggle) {
-      orderLineToggle.onclick = () => setShowOrderLines((prev) => !prev);
-    }
-  }, [isChartReady, orderLineToggle]);
 
   useEffect(
     // Update display button on toggle
     () => {
-      if (showOrderLines) {
-        orderLineToggle?.classList?.add('order-lines-active');
-      } else {
-        orderLineToggle?.classList?.remove('order-lines-active');
+      if (isChartReady) {
+        runOnChartReady(() => {
+          if (orderLinesToggleOn) {
+            orderLineToggle?.classList?.add(TOGGLE_ACTIVE_CLASS_NAME);
+          } else {
+            orderLineToggle?.classList?.remove(TOGGLE_ACTIVE_CLASS_NAME);
+          }
+        });
       }
     },
-    [showOrderLines, orderLineToggle?.classList]
+    [orderLinesToggleOn, orderLineToggle, runOnChartReady, isChartReady]
   );
 
   useEffect(
@@ -317,17 +319,25 @@ export const useChartLines = ({
     ]
   );
 
+  useEffect(
+    () => {
+      if (initialWidget && !isChartReady) {
+        // Clear lines when chart switches to not ready after initialization (i.e. when orderbookCandles is toggled)
+        clearChartLines();
+      } else if (!isAccountConnected) {
+        // Clear lines when disconnecting account
+        clearChartLines();
+      }
+    },
+    // We intentionally avoid rerunning this hook on update of initialWidget
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isChartReady, clearChartLines, isAccountConnected]
+  );
+
   useEffect(() => {
     // Clear lines when switching markets
     return () => clearChartLines();
   }, [currentMarketId, clearChartLines]);
-
-  useEffect(() => {
-    // Clear lines when disconnecting account
-    if (!isAccountConnected) {
-      clearChartLines();
-    }
-  }, [isAccountConnected, clearChartLines]);
 
   return { chartLines: chartLinesRef.current };
 };

@@ -5,11 +5,13 @@ import styled, { css } from 'styled-components';
 
 import type { TvWidget } from '@/constants/tvchart';
 
+import { useBuySellMarks } from '@/hooks/tradingView/useBuySellMarks';
 import { useChartLines } from '@/hooks/tradingView/useChartLines';
 import { useChartMarketAndResolution } from '@/hooks/tradingView/useChartMarketAndResolution';
-import { useOhlcCandles } from '@/hooks/tradingView/useOhlcCandles';
+import { useOrderbookCandles } from '@/hooks/tradingView/useOrderbookCandles';
 import { useTradingView } from '@/hooks/tradingView/useTradingView';
 import { useTradingViewTheme } from '@/hooks/tradingView/useTradingViewTheme';
+import { useTradingViewToggles } from '@/hooks/tradingView/useTradingViewToggles';
 
 import { layoutMixins } from '@/styles/layoutMixins';
 
@@ -24,13 +26,31 @@ export const TvChart = () => {
 
   const orderLineToggleRef = useRef<HTMLElement | null>(null);
   const orderLineToggle = orderLineToggleRef.current;
-  const ohlcToggleRef = useRef<HTMLElement | null>(null);
-  const ohlcToggle = ohlcToggleRef.current;
 
+  const orderbookCandlesToggleRef = useRef<HTMLElement | null>(null);
+  const orderbookCandlesToggle = orderbookCandlesToggleRef.current;
+  const buySellMarksToggleRef = useRef<HTMLElement | null>(null);
+  const buySellMarksToggle = buySellMarksToggleRef.current;
+
+  const {
+    orderLinesToggleOn,
+    setOrderLinesToggleOn,
+    orderbookCandlesToggleOn,
+    setOrderbookCandlesToggleOn,
+    setBuySellMarksToggleOn,
+    buySellMarksToggleOn,
+  } = useTradingViewToggles();
   const { savedResolution } = useTradingView({
     tvWidgetRef,
     orderLineToggleRef,
-    ohlcToggleRef,
+    orderLinesToggleOn,
+    setOrderLinesToggleOn,
+    orderbookCandlesToggleRef,
+    orderbookCandlesToggleOn,
+    setOrderbookCandlesToggleOn,
+    buySellMarksToggleRef,
+    buySellMarksToggleOn,
+    setBuySellMarksToggleOn,
     setIsChartReady,
   });
   useChartMarketAndResolution({
@@ -38,8 +58,24 @@ export const TvChart = () => {
     isWidgetReady,
     savedResolution: savedResolution as ResolutionString | undefined,
   });
-  const { chartLines } = useChartLines({ tvWidget, orderLineToggle, isChartReady });
-  useOhlcCandles({ ohlcToggle, isChartReady });
+  const { chartLines } = useChartLines({
+    tvWidget,
+    orderLineToggle,
+    isChartReady,
+    orderLinesToggleOn,
+  });
+  useOrderbookCandles({
+    orderbookCandlesToggle,
+    isChartReady,
+    orderbookCandlesToggleOn,
+    tvWidget,
+  });
+  useBuySellMarks({
+    buySellMarksToggle,
+    buySellMarksToggleOn,
+    tvWidget,
+    isChartReady,
+  });
   useTradingViewTheme({ tvWidget, isWidgetReady, chartLines });
 
   return (
@@ -53,6 +89,7 @@ export const TvChart = () => {
 const $PriceChart = styled.div<{ isChartReady?: boolean }>`
   ${layoutMixins.stack}
   user-select: none;
+  pointer-events: initial; // allow pointer events when dialog overlay is visible
 
   height: 100%;
 

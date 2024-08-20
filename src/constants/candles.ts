@@ -18,13 +18,25 @@ export interface Candle {
   orderbookMidPriceClose?: string;
 }
 
-export interface TradingViewBar {
+interface TradingViewBar {
+  // Properties corresponding to the TradingView.Bar interface, used by library for rendering
   time: number;
   low: number;
   high: number;
   open: number;
   close: number;
   volume: number;
+}
+
+export interface TradingViewChartBar extends TradingViewBar {
+  // Additional properties used to re-map Bars conditionally if orderbookCandles is enabled
+  tradeOpen: number;
+  tradeClose: number;
+  orderbookOpen?: number;
+  orderbookClose?: number;
+  tradeLow: number;
+  tradeHigh: number;
+  trades: number;
 }
 
 export interface TradingViewSymbol {
@@ -47,6 +59,19 @@ export enum CandleResolution {
   FOUR_HOURS = '4HOURS',
   ONE_DAY = '1DAY',
 }
+
+/**
+ * @description ResolutionStrings used with TradingView's charting library mapped to time interval per candle in ms
+ */
+export const RESOLUTION_TO_INTERVAL_MS = {
+  '1': timeUnits.second,
+  '5': 5 * timeUnits.minute,
+  '15': 15 * timeUnits.minute,
+  '30': 30 * timeUnits.minute,
+  '60': timeUnits.hour,
+  '240': 4 * timeUnits.hour,
+  '1D': timeUnits.day,
+} as Record<ResolutionString, number>;
 
 /**
  * @description ResolutionStrings used with TradingView's charting library mapped to CandleResolution

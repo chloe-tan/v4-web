@@ -52,6 +52,7 @@ export type NewMarketMessageDetailsDialogProps = {
 };
 export type OnboardingDialogProps = {};
 export type OrderDetailsDialogProps = { orderId: string };
+export type PredictionMarketIntroDialogProps = {};
 export type PreferencesDialogProps = {};
 export type RateLimitDialogProps = { preventClose?: boolean };
 export type RestrictedGeoDialogProps = { preventClose?: boolean };
@@ -117,6 +118,7 @@ export const DialogTypes = unionize(
     NewMarketMessageDetails: ofType<NewMarketMessageDetailsDialogProps>(),
     Onboarding: ofType<OnboardingDialogProps>(),
     OrderDetails: ofType<OrderDetailsDialogProps>(),
+    PredictionMarketIntro: ofType<PredictionMarketIntroDialogProps>(),
     Preferences: ofType<PreferencesDialogProps>(),
     RateLimit: ofType<RateLimitDialogProps>(),
     RestrictedGeo: ofType<RestrictedGeoDialogProps>(),

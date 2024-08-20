@@ -75,7 +75,14 @@ export const AccountMenu = () => {
   const { usdcLabel, chainTokenLabel } = useTokenConfigs();
   const theme = useAppSelector(getAppTheme);
 
-  const { evmAddress, walletType, dydxAddress, hdKey } = useAccounts();
+  const { evmAddress, solAddress, walletType, dydxAddress, hdKey } = useAccounts();
+
+  let address: string | undefined;
+  if (walletType === WalletType.Phantom) {
+    address = truncateAddress(solAddress, '');
+  } else {
+    address = truncateAddress(evmAddress, '0x');
+  }
 
   const privy = usePrivy();
   const { google, discord, twitter } = privy?.user ?? {};
@@ -165,7 +172,7 @@ export const AccountMenu = () => {
                 </div>
                 <$Column>
                   <$label>{stringGetter({ key: STRING_KEYS.SOURCE_ADDRESS })}</$label>
-                  <$Address>{truncateAddress(evmAddress, '0x')}</$Address>
+                  <$Address>{address}</$Address>
                 </$Column>
               </$AddressRow>
             )}
@@ -442,7 +449,6 @@ const $label = styled.div`
 
 const $Balances = styled.div`
   ${layoutMixins.flexColumn}
-
   > div {
     ${layoutMixins.spacedRow}
     box-shadow: 0 0 0 1px var(--color-border);
@@ -455,6 +461,7 @@ const $Balances = styled.div`
     &:first-child {
       border-radius: 0.5rem 0.5rem 0 0;
     }
+
     &:last-child {
       border-radius: 0 0 0.5rem 0.5rem;
     }

@@ -441,6 +441,10 @@ class AbacusStateManager {
     this.websocket.send(requestText);
   };
 
+  toggleOrderbookCandles = (useOrderbookCandles: boolean) => {
+    this.websocket.orderbookCandlesToggleOn = useOrderbookCandles;
+  };
+
   getChainById = (chainId: string) => {
     return this.stateManager.getChainById(chainId);
   };
@@ -448,16 +452,20 @@ class AbacusStateManager {
   /**
    *
    * Updates Abacus' global StatsigConfig object.
-   * You must destructure the new flag you want to use from the config and set
-   * the relevant property on the StatsigConfig object.
+   * You must define the property in abacus first, and then add to the enum.
    *
-   * TODO: establish standardized naming conventions between
-   * statsig FF name and boolean propery in abacus StatsigConfig
-   * https://linear.app/dydx/project/feature-experimentation-6853beb333d7/overview
    */
   setStatsigConfigs = (statsigConfig: { [key in StatSigFlags]?: boolean }) => {
-    const { [StatSigFlags.ffSkipMigration]: useSkip = false } = statsigConfig;
+    const { [StatSigFlags.ffSkipMigration]: useSkip = false, ...rest } = statsigConfig;
     StatsigConfig.useSkip = useSkip;
+    Object.entries(rest).forEach(([k, v]) => {
+      // This filters out any feature flags in the enum that are not part of the
+      // kotlin statsig config object
+      if (k in StatsigConfig) {
+        // @ts-ignore
+        StatsigConfig[k] = v;
+      }
+    });
   };
 }
 

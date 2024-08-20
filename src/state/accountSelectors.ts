@@ -17,6 +17,7 @@ import { NUM_PARENT_SUBACCOUNTS, OnboardingState } from '@/constants/account';
 import { LEVERAGE_DECIMALS } from '@/constants/numbers';
 
 import {
+  getAverageFillPrice,
   getHydratedTradingData,
   isOrderStatusClearable,
   isOrderStatusOpen,
@@ -465,6 +466,17 @@ export const getCurrentMarketFills = createAppSelector(
   (currentMarketId, marketFills): SubaccountFill[] =>
     !currentMarketId ? [] : marketFills[currentMarketId]
 );
+
+const getFillsForOrderId = createAppSelector(
+  [(s, orderId) => orderId, getSubaccountFills],
+  (orderId, fills) => (orderId ? groupBy(fills, 'orderId')[orderId] ?? [] : [])
+);
+
+/**
+ * @returns the average price the order is filled at
+ */
+export const getAverageFillPriceForOrder = () =>
+  createAppSelector([(s, orderId) => getFillsForOrderId(s, orderId)], getAverageFillPrice);
 
 /**
  * @param state
