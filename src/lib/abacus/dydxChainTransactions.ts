@@ -600,11 +600,18 @@ class DydxChainTransactions implements AbacusDYDXChainTransactionsProtocol {
         throw new Error('Sender address does not match local wallet');
       }
 
+      const isIsolatedCancel =
+        params.senderAddress === params.destinationAddress &&
+        params.destinationSubaccountNumber === 0;
+
       const tx = await this.compositeClient.transferToSubaccount(
         new SubaccountClient(this.localWallet, params.subaccountNumber),
         params.destinationAddress,
         params.destinationSubaccountNumber,
-        parseFloat(params.amount).toFixed(6)
+        parseFloat(params.amount).toFixed(6),
+        isIsolatedCancel
+          ? `${DEFAULT_TRANSACTION_MEMO} | Cancel order transfer`
+          : DEFAULT_TRANSACTION_MEMO
       );
 
       const parsedTx = this.parseToPrimitives(tx);
