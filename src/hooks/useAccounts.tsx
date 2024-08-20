@@ -61,6 +61,7 @@ const useAccountsContext = () => {
     publicClientWagmi,
     dydxAddress: connectedDydxAddress,
     getCosmosOfflineSigner,
+    isConnectedGraz,
   } = useWalletConnection();
 
   // EVM wallet connection
@@ -220,7 +221,7 @@ const useAccountsContext = () => {
         setLocalDydxWallet(wallet);
 
         dispatch(setOnboardingState(OnboardingState.AccountConnected));
-      } else if (connectedDydxAddress) {
+      } else if (connectedDydxAddress && isConnectedGraz) {
         try {
           const dydxOfflineSigner = await getCosmosOfflineSigner(selectedDydxChainId);
           if (dydxOfflineSigner) {
@@ -267,7 +268,7 @@ const useAccountsContext = () => {
         dispatch(setOnboardingState(OnboardingState.Disconnected));
       }
     })();
-  }, [evmAddress, evmDerivedAddresses, signerWagmi, connectedDydxAddress]);
+  }, [evmAddress, evmDerivedAddresses, signerWagmi, connectedDydxAddress, isConnectedGraz]);
 
   // abacus
   useEffect(() => {

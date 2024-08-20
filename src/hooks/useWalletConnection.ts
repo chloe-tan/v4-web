@@ -71,7 +71,7 @@ export const useWalletConnection = () => {
 
   const { disconnectAsync: disconnectGraz } = useDisconnectGraz();
 
-  const dydxAddressGraz = dydxAccountGraz?.bech32Address;
+  const dydxAddressGraz = isConnectedGraz ? dydxAccountGraz?.bech32Address : undefined;
 
   const getCosmosOfflineSigner = async (chainId: string) => {
     if (isConnectedGraz) {

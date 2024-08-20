@@ -30,8 +30,8 @@ dependencies:
     specifier: ^0.32.1
     version: 0.32.2
   '@dydxprotocol/v4-abacus':
-    specifier: 1.8.80
-    version: 1.8.80
+    specifier: 1.8.89
+    version: 1.8.89
   '@dydxprotocol/v4-client-js':
     specifier: ^1.1.27
     version: 1.1.27
@@ -3128,8 +3128,8 @@ packages:
       uuid: 9.0.1
     dev: false
 
-  /@dydxprotocol/v4-abacus@1.8.80:
-    resolution: {integrity: sha512-d8e7RdScxOpLazn0fZcct0s1N+5o7nb8r/DgtjnuFjd6PmXsBVmrXhTD1dnqx56IJxiJywTELK44hSTC4D2RLA==}
+  /@dydxprotocol/v4-abacus@1.8.89:
+    resolution: {integrity: sha512-2M6iE1oDzzbccP3/Zi53eQhyj3wOLddg9zzYqss7Of9JuKp4ajoRpeNJEFqSziHiOdrW0vWhD3BOw+yEOmQ/Jg==}
     dependencies:
       '@js-joda/core': 3.2.0
       format-util: 1.0.5
@@ -4540,33 +4540,33 @@ packages:
     resolution: {integrity: sha512-7dqNYwG8gCt4hfg5PKgM7xLEcgSBcx/UgC92OMnhMmvAnq11QzDFPrxUkNR/u5kn17WWLZ8beZ4A3Qrz4pZcmQ==}
     dev: false
 
-  /@keplr-wallet/common@0.12.109:
-    resolution: {integrity: sha512-f78gY/OO/dR8FxcinvYks/WtNqqT0FRz+c/qCbF/hc7Dbi9x16v8QFwP02TORAeA6oP62pwi+iM7Qyg4NlhL7A==}
+  /@keplr-wallet/common@0.12.121:
+    resolution: {integrity: sha512-CPycrXnBy7+l6qUlOROIt4jXCSdpyTfIJHzDaI5zzBAKxRKFCPx+4LzOb0ZEhZvs8m328f+tfCnWUqngCBPWkA==}
     dependencies:
-      '@keplr-wallet/crypto': 0.12.109
-      '@keplr-wallet/types': 0.12.109
+      '@keplr-wallet/crypto': 0.12.121
+      '@keplr-wallet/types': 0.12.121
       buffer: 6.0.3
       delay: 4.4.1
     dev: false
 
-  /@keplr-wallet/cosmos@0.12.109:
-    resolution: {integrity: sha512-mMKhnA6PO4OOa3kJ8kQ68rr8sZKfGreP0Ge/bDsMF+umW3FfPub0jIzAFOzdMRgwAnrT9qSPQo84PuIhM+2kcA==}
+  /@keplr-wallet/cosmos@0.12.121:
+    resolution: {integrity: sha512-8NvV+4uhy/0Xxet9uMUu6AgkJHCt6nNHe2F2A6wyzNBSehW1igQJIWVEhQFj2Nb58SfR0Xt10lQpVEKvdeIIsQ==}
     dependencies:
       '@ethersproject/address': 5.7.0
-      '@keplr-wallet/common': 0.12.109
-      '@keplr-wallet/crypto': 0.12.109
-      '@keplr-wallet/proto-types': 0.12.109
-      '@keplr-wallet/simple-fetch': 0.12.109
-      '@keplr-wallet/types': 0.12.109
-      '@keplr-wallet/unit': 0.12.109
+      '@keplr-wallet/common': 0.12.121
+      '@keplr-wallet/crypto': 0.12.121
+      '@keplr-wallet/proto-types': 0.12.121
+      '@keplr-wallet/simple-fetch': 0.12.121
+      '@keplr-wallet/types': 0.12.121
+      '@keplr-wallet/unit': 0.12.121
       bech32: 1.1.4
       buffer: 6.0.3
       long: 4.0.0
       protobufjs: 6.11.4
     dev: false
 
-  /@keplr-wallet/crypto@0.12.109:
-    resolution: {integrity: sha512-Vl5/Fga4DF8yaeJ12BjxSLcLyxB31/5TiTg1VM1N5M9KHZdoc32UfR4RMTA4hn66/cK4aPEKuRXsqtoJEQjp3g==}
+  /@keplr-wallet/crypto@0.12.121:
+    resolution: {integrity: sha512-kHYl/u8msZKhHT0MbfywHUk881d8Cy9JcYjC/gaOk+YiDr5vx9IKC2G1XHR28YHs1cQtx6h+L/nw56ZdsYYpow==}
     dependencies:
       '@ethersproject/keccak256': 5.7.0
       bip32: 2.0.6
@@ -4578,13 +4578,6 @@ packages:
       sha.js: 2.4.11
     dev: false
 
-  /@keplr-wallet/proto-types@0.12.109:
-    resolution: {integrity: sha512-q58LPJAZi7ezbc28daSNCN5ACiE3KpEFSj03a8N5jdCvMHzKLnDxDzByDoi1SWQsFzZQKkPKUw2rAwiUBSoCcg==}
-    dependencies:
-      long: 4.0.0
-      protobufjs: 6.11.4
-    dev: false
-
   /@keplr-wallet/proto-types@0.12.12:
     resolution: {integrity: sha512-iAqqNlJpxu/8j+SwOXEH2ymM4W0anfxn+eNeWuqz2c/0JxGTWeLURioxQmCtewtllfHdDHHcoQ7/S+NmXiaEgQ==}
     dependencies:
@@ -4592,8 +4585,15 @@ packages:
       protobufjs: 6.11.4
     dev: false
 
-  /@keplr-wallet/simple-fetch@0.12.109:
-    resolution: {integrity: sha512-u9wQmdnmgGynHFs+Si3A1sCq2bjABAivR4Q9jYiVJkoxPcJs0xV7SuktI7J2D7sM4h/ZXvnwte+Bb+54mVn+qw==}
+  /@keplr-wallet/proto-types@0.12.121:
+    resolution: {integrity: sha512-WagQOzCEcV95wmwMM/97SVhEXACc54o4nVE4iJE+HWirij/ITjPfVIATwlnO/SsKsU8G0XcDZcxQSxCmMIK4pA==}
+    dependencies:
+      long: 4.0.0
+      protobufjs: 6.11.4
+    dev: false
+
+  /@keplr-wallet/simple-fetch@0.12.121:
+    resolution: {integrity: sha512-wpBYFvd98tIOEnU2wEdA+EileyEUTQwONRF4bZzRz5IPUewhe+sV2VHVFx/Bwps14CcB7Ka/U90LjdTfcPoIGw==}
     dev: false
 
   /@keplr-wallet/types@0.11.64:
@@ -4607,12 +4607,6 @@ packages:
 
   /@keplr-wallet/types@0.12.105:
     resolution: {integrity: sha512-jJPSugQ6yWk/7kZVVzypKupQjSSnETg8lB9Icaqv/ULcSu4AZkl+JqBbUKMcb0bIgQKcHTTx5o/otyII4niHIw==}
-    dependencies:
-      long: 4.0.0
-    dev: false
-
-  /@keplr-wallet/types@0.12.109:
-    resolution: {integrity: sha512-CqbrEnswKczAw3fnV3pfgD/M7D9YWDgHJNyz1t8eFUGnJJRjzvul2W6ImAU3H1BYMTRMXzOOG+fErbVvAaZQdA==}
     dependencies:
       long: 4.0.0
     dev: false
@@ -4637,10 +4631,10 @@ packages:
       utility-types: 3.10.0
     dev: false
 
-  /@keplr-wallet/unit@0.12.109:
-    resolution: {integrity: sha512-mRG1hqgdHrvWb9J7lkEVI6b7xKXN8Ngdueg9ycg5/dQ30ugPxf3D3V5LUnUifycbVlnGj+YnfT7OOiLy43qbFg==}
+  /@keplr-wallet/unit@0.12.121:
+    resolution: {integrity: sha512-zshS9bd9Y9FJY7d54ZqrUUXY1BAFhD1ClLyeGpeXGk0SSOPPmHk6/j2f14Uk6zUZzb5iAtloBTZ4g2fGdQIiSQ==}
     dependencies:
-      '@keplr-wallet/types': 0.12.109
+      '@keplr-wallet/types': 0.12.121
       big-integer: 1.6.52
       utility-types: 3.10.0
     dev: false
@@ -16250,7 +16244,7 @@ packages:
       '@cosmjs/tendermint-rpc': 0.32.2
       '@cosmsnap/snapper': 0.1.31
       '@dao-dao/cosmiframe': 0.1.0(@cosmjs/amino@0.32.2)(@cosmjs/proto-signing@0.32.2)
-      '@keplr-wallet/cosmos': 0.12.109
+      '@keplr-wallet/cosmos': 0.12.121
       '@keplr-wallet/types': 0.12.121
       '@leapwallet/cosmos-social-login-capsule-provider': 0.0.39(@cosmjs/encoding@0.32.2)(@cosmjs/proto-signing@0.32.2)(fp-ts@2.16.8)
       '@metamask/providers': 12.0.0
