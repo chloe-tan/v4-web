@@ -1,6 +1,5 @@
 import { Secp256k1, sha256 } from '@cosmjs/crypto';
 
-// import { verifyADR36Amino } from '@keplr-wallet/cosmos';
 import { Hdkey } from '@/constants/account';
 import { BLOCKED_COUNTRIES, CountryCodes, OFAC_SANCTIONED_COUNTRIES } from '@/constants/geo';
 import { LOCAL_STORAGE_VERSIONS, LocalStorageKey } from '@/constants/localStorage';
@@ -75,23 +74,6 @@ export const signComplianceSignatureKeplr = async (
       },
     },
   });
-
-  // const pub = new Uint8Array(Buffer.from(pubKey.value, 'base64'));
-  // const sig = new Uint8Array(Buffer.from(signature, 'base64'));
-
-  // try {
-  //   const isVerified = verifyADR36Amino(
-  //     'dydx',
-  //     'dydx1cew7z78590202eujzr799da2p2c5ssq7ahhxze',
-  //     messageToSign,
-  //     pub,
-  //     sig,
-  //     'secp256k1'
-  //   );
-  //   console.log('isVerified', isVerified);
-  // } catch (e) {
-  //   console.error('Error verifying signature', e);
-  // }
 
   return {
     signedMessage: signature,

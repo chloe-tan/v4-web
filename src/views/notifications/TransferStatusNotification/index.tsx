@@ -113,7 +113,7 @@ export const TransferStatusNotification = ({
       key: 'status',
       label: 'Status',
       // TODO: Need to add localization
-      value: isComplete ? 'Confirmed' : 'Awaiting Confirmation',
+      value: isComplete ? stringGetter({ key: STRING_KEYS.CONFIRMED }) : 'Awaiting Confirmation',
     },
   ];
 
@@ -141,8 +141,7 @@ export const TransferStatusNotification = ({
               size={ButtonSize.Small}
               onClick={subaccountDeposit}
             >
-              {/* TODO: Need to add localization */}
-              Confirm Deposit
+              {stringGetter({ key: STRING_KEYS.CONFIRM_DEPOSIT })}
             </Button>
           )}
         </>
