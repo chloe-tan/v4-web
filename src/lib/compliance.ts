@@ -11,7 +11,7 @@ type KeplrComplianceStorage = {
   version?: string;
   [address: DydxAddress]: {
     pubKey?: string;
-    signature?: DydxAddress;
+    signature?: string;
   };
 };
 
@@ -46,19 +46,17 @@ export const signComplianceSignatureKeplr = async (
     throw new Error('Keplr not found');
   }
 
-  const storedSignature = getLocalStorage<KeplrComplianceStorage>({
+  const stored = getLocalStorage<KeplrComplianceStorage>({
     key: LocalStorageKey.KeplrCompliance,
   });
 
-  if (
-    storedSignature &&
-    storedSignature[signer] &&
-    storedSignature[signer].pubKey &&
-    storedSignature[signer].signature
-  ) {
+  const storedSignature = stored[signer]?.signature;
+  const storedPubKey = stored[signer]?.pubKey;
+
+  if (storedPubKey && storedSignature) {
     return {
-      signedMessage: storedSignature[signer].signature,
-      pubKey: storedSignature[signer].pubKey,
+      signedMessage: storedSignature,
+      pubKey: storedPubKey,
     };
   }
 
