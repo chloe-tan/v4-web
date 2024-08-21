@@ -30,8 +30,8 @@ dependencies:
     specifier: ^0.32.1
     version: 0.32.2
   '@dydxprotocol/v4-abacus':
-    specifier: 1.8.91
-    version: 1.8.91
+    specifier: 1.8.95
+    version: 1.8.95
   '@dydxprotocol/v4-client-js':
     specifier: ^1.1.27
     version: 1.1.27
@@ -3134,8 +3134,8 @@ packages:
       uuid: 9.0.1
     dev: false
 
-  /@dydxprotocol/v4-abacus@1.8.91:
-    resolution: {integrity: sha512-tz19RUsvW3L2cDuAxIpDo2sFvVn1ZLET5V20x2Yls9U7QmtyUl8DwRZEoFmrqNi9kbYqgekntN2Brd9tmOUakA==}
+  /@dydxprotocol/v4-abacus@1.8.95:
+    resolution: {integrity: sha512-N10iUnTtePDfk/xMmhQIXLgTCUwU07waMawBXIczND7HVDuafqBtZKtG2p2qjk4CZ9xzGcLHm5hLPcVWFqTQKg==}
     dependencies:
       '@js-joda/core': 3.2.0
       format-util: 1.0.5
