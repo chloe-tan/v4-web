@@ -112,8 +112,9 @@ export const TransferStatusNotification = ({
     {
       key: 'status',
       label: 'Status',
-      // TODO: Need to add localization
-      value: isComplete ? stringGetter({ key: STRING_KEYS.CONFIRMED }) : 'Awaiting Confirmation',
+      value: isComplete
+        ? stringGetter({ key: STRING_KEYS.CONFIRMED })
+        : stringGetter({ key: STRING_KEYS.AWAITING_CONFIRMATION }),
     },
   ];
 

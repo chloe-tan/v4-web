@@ -548,8 +548,8 @@ class DydxChainTransactions implements AbacusDYDXChainTransactionsProtocol {
     message: string;
     action: string;
     status: string;
+    chainId: string;
   }): Promise<string> {
-    const chainId = this.compositeClient?.network.getString();
     const address = this.localWallet?.address;
     try {
       if (this.hdkey?.privateKey && this.hdkey?.publicKey) {
@@ -565,11 +565,11 @@ class DydxChainTransactions implements AbacusDYDXChainTransactionsProtocol {
           timestamp,
         });
       }
-      if (window.keplr && chainId && address) {
+      if (window.keplr && params.chainId && address) {
         const { signedMessage, pubKey } = await signComplianceSignatureKeplr(
           params.message,
           address as DydxAddress,
-          chainId
+          params.chainId
         );
         return JSON.stringify({
           signedMessage,

@@ -472,8 +472,9 @@ export const WithdrawForm = () => {
 
     if (!isValidAddress) {
       return {
-        // TODO: Need to add localization
-        errorMessage: 'Please enter a valid address.',
+        errorMessage: stringGetter({
+          key: STRING_KEYS.ENTER_VALID_ADDRESS,
+        }),
       };
     }
 

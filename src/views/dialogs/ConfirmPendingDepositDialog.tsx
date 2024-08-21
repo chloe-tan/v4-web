@@ -76,14 +76,16 @@ export const ConfirmPendingDepositDialog = ({
   };
 
   return (
-    <Dialog isOpen setIsOpen={setIsOpen} title="Confirm Pending Deposit">
+    <Dialog
+      isOpen
+      setIsOpen={setIsOpen}
+      title={stringGetter({ key: STRING_KEYS.CONFIRM_PENDING_DEPOSIT })}
+    >
       <$Container>
-        <$Description>
-          Fund your dYdX subaccount balance once your IBC transfer has been received.
-        </$Description>
+        <$Description>{stringGetter({ key: STRING_KEYS.FUND_YOUR_SUBACCOUNT })}</$Description>
         <$AmountContainer>
           {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label>Amount</label>
+          <label>{stringGetter({ key: STRING_KEYS.AMOUNT })}</label>
           <$Output useGrouping withBaseFont type={OutputType.Fiat} value={usdcBalance} />
         </$AmountContainer>
         <Button

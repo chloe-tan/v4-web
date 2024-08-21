@@ -234,8 +234,7 @@ export const notificationTypes: NotificationTypeConfig[] = [
           );
 
           const title = isCosmosDeposit
-            ? // TODO: Need to add localization
-              'Confirm Pending Deposit'
+            ? stringGetter({ key: STRING_KEYS.CONFIRM_PENDING_DEPOSIT })
             : stringGetter({
                 key: {
                   deposit: isFinished ? STRING_KEYS.DEPOSIT : STRING_KEYS.DEPOSIT_IN_PROGRESS,
