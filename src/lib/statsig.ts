@@ -25,7 +25,7 @@ export const initStatsigAsync = async () => {
     statsigClient = new StatsigClient(
       import.meta.env.VITE_STATSIG_CLIENT_KEY ?? '',
       // TODO: create a top level settings.ts file to coerce boolean env vars to actual boolean
-      import.meta.env.VITE_TEST_USER_ID === 'true' ? { userID: 'test-id' } : {},
+      import.meta.env.VITE_TEST_USER_ID === 'true' || true ? { userID: 'test-id' } : {},
       {
         disableLogging: import.meta.env.VITE_DISABLE_STATSIG,
         disableStorage: import.meta.env.VITE_DISABLE_STATSIG,

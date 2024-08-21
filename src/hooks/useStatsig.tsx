@@ -25,7 +25,7 @@ export const StatsigProvider = ({ children }: { children: React.ReactNode }) => 
 
 export const useStatsigGateValue = (gate: StatSigFlags) => {
   const { checkGate } = useStatsigClient();
-  return checkGate(gate) || true;
+  return checkGate(gate);
 };
 
 export const useStatsigDynamicConfigValue = (
