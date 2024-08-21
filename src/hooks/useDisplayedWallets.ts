@@ -12,7 +12,7 @@ export const useDisplayedWallets = () => {
   const displayedWallets = [
     WalletType.MetaMask,
 
-    keplrEnabled && WalletType.Keplr,
+    WalletType.Keplr,
 
     Boolean(isTestnet || isDev) && WalletType.Phantom,
 
