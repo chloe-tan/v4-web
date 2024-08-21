@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 
-import { StatSigFlags } from '@/types/statsig';
 import { shallowEqual } from 'react-redux';
 import tw from 'twin.macro';
 
@@ -9,6 +8,7 @@ import { cctpTokensByDenom, getMapOfLowestFeeTokensByDenom } from '@/constants/c
 import { NEUTRON_USDC_IBC_DENOM, OSMO_USDC_IBC_DENOM } from '@/constants/denoms';
 import { STRING_KEYS } from '@/constants/localization';
 import { EMPTY_ARR } from '@/constants/objects';
+import { StatSigFlags } from '@/constants/statsig';
 import { WalletType } from '@/constants/wallets';
 
 import { useAccounts } from '@/hooks/useAccounts';

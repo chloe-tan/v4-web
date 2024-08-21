@@ -50,6 +50,9 @@ export enum WalletErrorType {
 
   // Misc
   Unknown,
+
+  // EIP specified errors
+  EipResourceUnavailable,
 }
 
 type WalletConnectionTypeConfig = {
