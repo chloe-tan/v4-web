@@ -1,6 +1,5 @@
-import { StatSigFlags } from '@/types/statsig';
-
 import { isDev, isTestnet } from '@/constants/networks';
+import { StatSigFlags } from '@/constants/statsig';
 import { WalletType } from '@/constants/wallets';
 
 import { isTruthy } from '@/lib/isTruthy';
@@ -15,7 +14,7 @@ export const useDisplayedWallets = () => {
 
     keplrEnabled && WalletType.Keplr,
 
-    (isTestnet || isDev) && WalletType.Phantom,
+    Boolean(isTestnet || isDev) && WalletType.Phantom,
 
     WalletType.WalletConnect2,
 
