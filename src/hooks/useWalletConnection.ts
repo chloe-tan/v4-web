@@ -91,17 +91,20 @@ export const useWalletConnection = () => {
 
   const dydxAddressGraz = isConnectedGraz ? dydxAccountGraz?.bech32Address : undefined;
 
-  const getCosmosOfflineSigner = async (chainId: string) => {
-    if (isConnectedGraz) {
-      const keplr = window.keplr;
+  const getCosmosOfflineSigner = useCallback(
+    async (chainId: string) => {
+      if (isConnectedGraz) {
+        const keplr = window.keplr;
 
-      const offlineSigner = await keplr?.getOfflineSigner(chainId);
+        const offlineSigner = await keplr?.getOfflineSigner(chainId);
 
-      return offlineSigner;
-    }
+        return offlineSigner;
+      }
 
-    return undefined;
-  };
+      return undefined;
+    },
+    [isConnectedGraz]
+  );
 
   useEffect(() => {
     // Cache last connected address

@@ -195,11 +195,10 @@ export const DepositForm = ({ onDeposit, onError }: DepositFormProps) => {
     if (dydxAddress) {
       // TODO: this is for fixing a race condition where the sourceAddress is not set in time.
       // worth investigating a better fix on abacus
-      if (evmAddress) {
-        abacusStateManager.setTransfersSourceAddress(evmAddress);
-      }
       if (walletType === WalletType.Keplr && nobleAddress) {
         abacusStateManager.setTransfersSourceAddress(nobleAddress);
+      } else if (evmAddress) {
+        abacusStateManager.setTransfersSourceAddress(evmAddress);
       }
       abacusStateManager.setTransferValue({
         field: TransferInputField.type,
