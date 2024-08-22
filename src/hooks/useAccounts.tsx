@@ -403,7 +403,7 @@ const useAccountsContext = () => {
       }
     };
     setNobleWallet();
-  }, [hdKey?.mnemonic]);
+  }, [hdKey?.mnemonic, getCosmosOfflineSigner, nobleChainId]);
 
   // clear subaccounts when no dydxAddress is set
   useEffect(() => {
