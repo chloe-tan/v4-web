@@ -42,6 +42,7 @@ import { Link } from '@/components/Link';
 import { Output, OutputType } from '@/components/Output';
 // eslint-disable-next-line import/no-cycle
 import { BlockRewardNotification } from '@/views/notifications/BlockRewardNotification';
+import { CancelAllNotification } from '@/views/notifications/CancelAllNotification';
 import { IncentiveSeasonDistributionNotification } from '@/views/notifications/IncentiveSeasonDistributionNotification';
 import { MarketLaunchTrumpwinNotification } from '@/views/notifications/MarketLaunchTrumpwinNotification';
 import { OrderCancelNotification } from '@/views/notifications/OrderCancelNotification';
@@ -50,6 +51,7 @@ import { TradeNotification } from '@/views/notifications/TradeNotification';
 import { TransferStatusNotification } from '@/views/notifications/TransferStatusNotification';
 
 import {
+  getLocalCancelAlls,
   getLocalCancelOrders,
   getLocalPlaceOrders,
   getSubaccountFills,
@@ -68,7 +70,7 @@ import { useApiState } from './useApiState';
 import { useComplianceState } from './useComplianceState';
 import { useIncentivesSeason } from './useIncentivesSeason';
 import { useQueryChaosLabsIncentives } from './useQueryChaosLabsIncentives';
-import { useAllStatsigGateValues, useAllStatsigDynamicConfigValues } from './useStatsig';
+import { useAllStatsigDynamicConfigValues, useAllStatsigGateValues } from './useStatsig';
 import { useStringGetter } from './useStringGetter';
 import { useTokenConfigs } from './useTokenConfigs';
 import { useURLConfigs } from './useURLConfigs';
@@ -630,6 +632,8 @@ export const notificationTypes: NotificationTypeConfig[] = [
     useTrigger: ({ trigger }) => {
       const localPlaceOrders = useAppSelector(getLocalPlaceOrders, shallowEqual);
       const localCancelOrders = useAppSelector(getLocalCancelOrders, shallowEqual);
+      const localCancelAlls = useAppSelector(getLocalCancelAlls, shallowEqual);
+
       const allOrders = useAppSelector(getSubaccountOrders, shallowEqual);
       const stringGetter = useStringGetter();
 
@@ -666,6 +670,9 @@ export const notificationTypes: NotificationTypeConfig[] = [
           const existingOrder = allOrders?.find((order) => order.id === localCancel.orderId);
           if (!existingOrder) return;
 
+          // skip if this is from a cancel all operation and isn't an error
+          if (localCancel.isSubmittedThroughCancelAll && !localCancel.errorParams) return;
+
           // share same notification with existing local order if exists
           // so that canceling a local order will not add an extra notification
           const key = (existingOrder.clientId ?? localCancel.orderId).toString();
@@ -691,6 +698,31 @@ export const notificationTypes: NotificationTypeConfig[] = [
           );
         }
       }, [localCancelOrders]);
+
+      useEffect(() => {
+        // eslint-disable-next-line no-restricted-syntax
+        for (const cancelAll of Object.values(localCancelAlls)) {
+          trigger(
+            cancelAll.key,
+            {
+              icon: null,
+              title: 'Cancel all orders',
+              toastSensitivity: 'background',
+              groupKey: cancelAll.key,
+              toastDuration: DEFAULT_TOAST_AUTO_CLOSE_MS,
+              renderCustomBody: ({ isToast, notification }) => (
+                <CancelAllNotification
+                  isToast={isToast}
+                  localCancelAll={cancelAll}
+                  notification={notification}
+                />
+              ),
+            },
+            [cancelAll.canceledOrderIds, cancelAll.failedOrderIds, cancelAll.errorParams],
+            true
+          );
+        }
+      }, [localCancelAlls]);
     },
     useNotificationAction: () => {
       const dispatch = useAppDispatch();

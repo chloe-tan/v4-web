@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import _ from 'lodash';
 
 import {
   type AccountBalance,
@@ -23,7 +24,9 @@ import { OnboardingGuard, OnboardingState } from '@/constants/account';
 import { DEFAULT_SOMETHING_WENT_WRONG_ERROR_PARAMS, ErrorParams } from '@/constants/errors';
 import { LocalStorageKey } from '@/constants/localStorage';
 import {
+  CANCEL_ALL_ORDERS_KEY,
   CancelOrderStatuses,
+  LocalCancelAllData,
   PlaceOrderStatuses,
   type LocalCancelOrderData,
   type LocalPlaceOrderData,
@@ -74,6 +77,7 @@ export type AccountState = {
   uncommittedOrderClientIds: number[];
   localPlaceOrders: LocalPlaceOrderData[];
   localCancelOrders: LocalCancelOrderData[];
+  localCancelAlls: Record<string, LocalCancelAllData>;
 
   restriction?: Nullable<UsageRestriction>;
   compliance?: Compliance;
@@ -116,6 +120,7 @@ const initialState: AccountState = {
   historicalPnlPeriod: undefined,
   localPlaceOrders: [],
   localCancelOrders: [],
+  localCancelAlls: {},
 
   // Restriction
   restriction: undefined,
@@ -257,6 +262,11 @@ export const accountSlice = createSlice({
         canceledOrderIdsInPayload.includes(orderId) &&
         !state.localCancelOrders.map((order) => order.orderId).includes(orderId);
 
+      const getNewCanceledOrderIds = (batch: LocalCancelAllData) => {
+        const newCanceledOrderIds = _.intersection(batch.orderIds, canceledOrderIdsInPayload);
+        return _.uniq([...(batch.canceledOrderIds ?? []), ...newCanceledOrderIds]);
+      };
+
       return {
         ...state,
         subaccount: action.payload,
@@ -273,6 +283,25 @@ export const accountSlice = createSlice({
                 : order
             )
           : state.localPlaceOrders,
+        localCancelAlls: canceledOrderIdsInPayload.length
+          ? {
+              ...Object.entries(state.localCancelAlls).reduce(
+                (acc, [marketId, batch]) => ({
+                  ...acc,
+                  [marketId]: {
+                    ...batch,
+                    canceledOrderIds: getNewCanceledOrderIds(batch),
+                    submissionStatus:
+                      batch.orderIds.length <=
+                      getNewCanceledOrderIds(batch).length + (batch.failedOrderIds?.length ?? 0)
+                        ? CancelOrderStatuses.Canceled
+                        : CancelOrderStatuses.Submitted,
+                  },
+                }),
+                {}
+              ),
+            }
+          : state.localCancelAlls,
       };
     },
     setChildSubaccount: (
@@ -377,9 +406,91 @@ export const accountSlice = createSlice({
     ) => {
       state.localCancelOrders.map((order) =>
         order.orderId === action.payload.orderId
-          ? { ...order, errorParams: action.payload.errorParams }
+          ? {
+              ...order,
+              errorParams: action.payload.errorParams,
+            }
           : order
       );
+    },
+    cancelAllSubmitted: (
+      state,
+      action: PayloadAction<{ marketId?: string; orderIds: string[] }>
+    ) => {
+      const { marketId, orderIds } = action.payload;
+      const cancelAllKey = marketId ?? CANCEL_ALL_ORDERS_KEY;
+
+      state.localCancelAlls[cancelAllKey] = {
+        key: cancelAllKey,
+        orderIds,
+      };
+
+      state.localCancelOrders = [
+        ...state.localCancelOrders,
+        ...orderIds.map((orderId) => ({
+          orderId,
+          submissionStatus: CancelOrderStatuses.Submitted,
+          isSubmittedThroughCancelAll: true, // track this to skip certain notifications
+        })),
+      ];
+    },
+    cancelAllOrderConfirmed: (state, action: PayloadAction<string>) => {
+      const orderId = action.payload;
+      const order = state.subaccount?.orders?.toArray()?.find((o) => o.id === orderId);
+      if (!order) return;
+
+      const getNewCanceledOrderIds = (cancelAll: LocalCancelAllData) => {
+        const existingCanceledOrderIds = cancelAll.canceledOrderIds ?? [];
+        if (!cancelAll.orderIds.includes(orderId) || existingCanceledOrderIds.includes(orderId))
+          return existingCanceledOrderIds;
+        return [...existingCanceledOrderIds, orderId];
+      };
+
+      state.localCancelAlls = {
+        ...state.localCancelAlls,
+        [CANCEL_ALL_ORDERS_KEY]: {
+          ...state.localCancelAlls[CANCEL_ALL_ORDERS_KEY],
+          canceledOrderIds: getNewCanceledOrderIds(state.localCancelAlls[CANCEL_ALL_ORDERS_KEY]),
+        },
+        [order.marketId]: {
+          ...state.localCancelAlls[order.marketId],
+          canceledOrderIds: getNewCanceledOrderIds(state.localCancelAlls[order.marketId]),
+        },
+      };
+
+      cancelOrderConfirmed(orderId);
+    },
+    cancelAllOrderFailed: (
+      state,
+      action: PayloadAction<{
+        orderId: string;
+        errorParams?: ErrorParams;
+      }>
+    ) => {
+      const { orderId, errorParams } = action.payload;
+      const order = state.subaccount?.orders?.toArray()?.find((o) => o.id === orderId);
+      if (!order) return;
+
+      const getNewFailedOrderIds = (cancelAll: LocalCancelAllData) => {
+        const existingFailedOrderIds = cancelAll.failedOrderIds ?? [];
+        if (!cancelAll.orderIds.includes(orderId) || existingFailedOrderIds.includes(orderId))
+          return existingFailedOrderIds;
+        return [...existingFailedOrderIds, orderId];
+      };
+
+      state.localCancelAlls = {
+        ...state.localCancelAlls,
+        [CANCEL_ALL_ORDERS_KEY]: {
+          ...state.localCancelAlls[CANCEL_ALL_ORDERS_KEY],
+          failedOrderIds: getNewFailedOrderIds(state.localCancelAlls[CANCEL_ALL_ORDERS_KEY]),
+        },
+        [order.marketId]: {
+          ...state.localCancelAlls[order.marketId],
+          failedOrderIds: getNewFailedOrderIds(state.localCancelAlls[order.marketId]),
+        },
+      };
+
+      if (errorParams) cancelOrderFailed({ orderId, errorParams });
     },
   },
 });
@@ -413,4 +524,7 @@ export const {
   cancelOrderSubmitted,
   cancelOrderConfirmed,
   cancelOrderFailed,
+  cancelAllSubmitted,
+  cancelAllOrderConfirmed,
+  cancelAllOrderFailed,
 } = accountSlice.actions;
