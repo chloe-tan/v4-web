@@ -32,7 +32,7 @@ import {
 import { WalletType } from '@/constants/wallets';
 
 import { getLocalStorage } from '@/lib/localStorage';
-import { isOrderStatusCanceled } from '@/lib/orders';
+import { isOrderStatusCanceled, isOrderStatusClearable } from '@/lib/orders';
 
 export type AccountState = {
   balances?: Record<string, AccountBalance>;
@@ -196,6 +196,21 @@ export const accountSlice = createSlice({
       ...state,
       clearedOrderIds: [...(state.clearedOrderIds ?? []), action.payload],
     }),
+    clearAllOrders: (state, action: PayloadAction<string | undefined>) => {
+      const marketId = action.payload;
+      const clearableOrderIds =
+        state.subaccount?.orders
+          ?.toArray()
+          .filter(
+            (order) =>
+              (!marketId || order.marketId === marketId) && isOrderStatusClearable(order.status)
+          )
+          .map((order) => order.id) ?? [];
+      return {
+        ...state,
+        clearedOrderIds: [...(state.clearedOrderIds ?? []), ...clearableOrderIds],
+      };
+    },
     setOnboardingGuard: (
       state,
       action: PayloadAction<{ guard: OnboardingGuard; value: boolean }>
@@ -375,6 +390,7 @@ export const {
   setTransfers,
   setLatestOrder,
   clearOrder,
+  clearAllOrders,
   setOnboardingGuard,
   setOnboardingState,
   setHistoricalPnl,
